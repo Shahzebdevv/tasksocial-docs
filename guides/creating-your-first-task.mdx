@@ -1,0 +1,162 @@
+---
+title: "Creating Your First Task"
+description: "Create and manage an accountability task with the TaskSocial API"
+---
+
+# Creating Your First Task
+
+Once you have registered and logged in, you can start creating accountability tasks.
+
+A task belongs to the authenticated user who creates it.
+
+The basic flow is:
+
+```text
+Log in
+   ↓
+Authentication cookie
+   ↓
+Create a task
+   ↓
+Task stored in MongoDB
+   ↓
+View your tasks
+   ↓
+Update or delete the task
+```
+
+## Before you start
+
+You need a registered TaskSocial account and an active login session.
+
+If you haven't authenticated yet, follow the [Authentication](/guides/authentication) guide first.
+
+## 1. Create a task
+
+Create a task using:
+
+```http
+POST /api/v1/tasks/create
+```
+
+Example request:
+
+```json
+{
+  "title": "Finish API documentation",
+  "description": "Complete the TaskSocial API documentation"
+}
+```
+
+The request uses the authentication cookie created during login.
+
+The backend identifies the authenticated user and associates the new task with that user.
+
+## 2. View your tasks
+
+After creating a task, you can retrieve the tasks belonging to your account:
+
+```http
+GET /api/v1/tasks/my-tasks
+```
+
+The backend uses your authentication cookie to identify your account and returns your tasks.
+
+This endpoint only returns tasks associated with the authenticated user.
+
+## 3. View the shared task feed
+
+TaskSocial also provides a shared task feed through:
+
+```http
+GET /api/v1/tasks/feed
+```
+
+This lets users see tasks from the wider TaskSocial community.
+
+The feed is different from `my-tasks` because it is intended to show shared task activity rather than only tasks belonging to the current user.
+
+## 4. Update a task
+
+To update a task, send a request to:
+
+```http
+PUT /api/v1/tasks/:id
+```
+
+Replace `:id` with the ID of the task you want to update.
+
+For example:
+
+```http
+PUT /api/v1/tasks/64f123456789
+```
+
+Example request body:
+
+```json
+{
+  "title": "Finish TaskSocial documentation",
+  "description": "Complete and review the API documentation"
+}
+```
+
+The backend verifies the authenticated user before updating the task.
+
+A user cannot update another user's task.
+
+## 5. Delete a task
+
+To delete a task, use:
+
+```http
+DELETE /api/v1/tasks/:id
+```
+
+Replace `:id` with the ID of the task you want to delete.
+
+The backend checks the authenticated user and verifies task ownership before deleting it.
+
+## Task ownership
+
+Every task is associated with the user who created it.
+
+For protected task operations, the backend follows this flow:
+
+```text
+Request
+   ↓
+Verify JWT
+   ↓
+Identify user
+   ↓
+Find task
+   ↓
+Check task ownership
+   ↓
+Perform operation
+```
+
+This ownership check is important for operations such as updating and deleting tasks.
+
+Authentication tells the backend who you are.
+
+Authorization determines whether you are allowed to modify the requested task.
+
+## Task endpoints
+
+| Method | Endpoint | Authentication |
+| --- | --- | --- |
+| `POST` | `/api/v1/tasks/create` | Required |
+| `GET` | `/api/v1/tasks/my-tasks` | Required |
+| `GET` | `/api/v1/tasks/feed` | Required |
+| `PUT` | `/api/v1/tasks/:id` | Required |
+| `DELETE` | `/api/v1/tasks/:id` | Required |
+
+For complete request schemas, responses, and interactive examples, see the [API Reference](/api-reference).
+
+## What's next?
+
+You can test the complete TaskSocial API flow using Postman.
+
+Continue with [API Testing](/guides/api-testing) to test registration, authentication, and task operations.

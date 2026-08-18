@@ -1,0 +1,408 @@
+openapi: 3.1.0
+info:
+  title: TaskSocial API
+  version: 1.0.0
+  description: REST API for TaskSocial, a social accountability application.
+servers:
+  - url: https://tasksocial-production.up.railway.app
+    description: TaskSocial production API
+tags:
+  - name: Authentication
+    description: User registration and authentication
+  - name: Tasks
+    description: Task creation and management
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a user
+      description: Creates a new TaskSocial user.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              username: shahzeb
+              email: shahzeb@example.com
+              password: password123
+      responses:
+        '201':
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+        '400':
+          description: Missing fields or email already registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Log in
+      description: |
+        Verifies the user's credentials and sets a JWT in the HttpOnly `tokenName` cookie. The returned cookie is used automatically for authenticated requests.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: shahzeb@example.com
+              password: password123
+      responses:
+        '200':
+          description: |
+            Login successful. The server sets the `tokenName` HttpOnly cookie containing the JWT used to authenticate protected endpoints.
+          headers:
+            Set-Cookie:
+              description: |
+                Authentication cookie containing the JWT. This cookie is created by the server; clients do not need to generate an API key.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Missing credentials or invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Log out
+      description: Clears the authentication cookie.
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Logged out successfully
+  /api/v1/tasks/create:
+    post:
+      tags:
+        - Tasks
+      summary: Create a task
+      description: Creates a task for the authenticated user.
+      operationId: createTask
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+            example:
+              title: Finish API documentation
+              description: Document the TaskSocial API
+      responses:
+        '201':
+          description: Task created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          description: Title or description is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/v1/tasks/my-tasks:
+    get:
+      tags:
+        - Tasks
+      summary: Get my tasks
+      description: Returns tasks belonging to the authenticated user.
+      operationId: getMyTasks
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Tasks returned successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/v1/tasks/feed:
+    get:
+      tags:
+        - Tasks
+      summary: Get the shared task feed
+      description: Returns tasks from the shared feed. Authentication is required for this endpoint.
+      operationId: getFeed
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Feed returned successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Feed:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/v1/tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskIdParameter'
+    put:
+      tags:
+        - Tasks
+      summary: Update a task
+      description: Updates a task owned by the authenticated user.
+      operationId: updateTask
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - completed
+            example:
+              title: Finish API documentation
+              description: Document and validate the API
+              status: completed
+      responses:
+        '200':
+          description: Task updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated user does not own the task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags:
+        - Tasks
+      summary: Delete a task
+      description: Deletes a task owned by the authenticated user.
+      operationId: deleteTask
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Task deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The authenticated user does not own the task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+    Task:
+      type: object
+      required:
+        - title
+        - description
+        - author
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+          default: pending
+        author:
+          type: string
+          description: MongoDB ObjectId of the task owner.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: tokenName
+      description: |
+        JWT authentication cookie. The server sets this cookie after a successful login. You do not need to generate or provide an API key manually. Use the login endpoint first, then the browser or HTTP client sends this cookie with protected requests.
+  responses:
+    Unauthorized:
+      description: Authentication is required or the authentication token is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  parameters:
+    TaskIdParameter:
+      name: id
+      in: path
+      required: true
+      description: MongoDB ObjectId of the task.
+      schema:
+        type: string

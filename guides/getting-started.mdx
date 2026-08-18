@@ -1,0 +1,176 @@
+---
+title: "Getting Started"
+description: "Start using the TaskSocial API"
+---
+
+# Getting Started
+
+Welcome to the TaskSocial API.
+
+TaskSocial provides a REST API for creating accounts, authenticating users, and creating and managing accountability tasks.
+
+This guide walks you through the basic flow of using the API.
+
+## API Base URL
+
+During local development, the API runs at:
+
+```text
+http://localhost:4000
+```
+
+All API endpoints are available under the `/api/v1` path.
+
+For example:
+
+```text
+POST http://localhost:4000/api/v1/auth/register
+```
+
+## What You Can Do
+
+With the TaskSocial API, you can:
+
+- Create a user account
+- Log in and authenticate
+- Create tasks
+- View your tasks
+- View the shared task feed
+- Update your tasks
+- Delete your tasks
+- Log out
+
+## Typical API Flow
+
+A typical session looks like this:
+
+```text
+Register
+   ↓
+Login
+   ↓
+Authentication cookie is created
+   ↓
+Make authenticated requests
+   ↓
+Create and manage tasks
+   ↓
+Logout
+```
+
+## 1. Create an Account
+
+First, register a new user using:
+
+```http
+POST /api/v1/auth/register
+```
+
+Example request:
+
+```json
+{
+  "username": "shahzeb",
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+If registration is successful, the API returns the newly created user's information.
+
+## 2. Log In
+
+After creating an account, log in using:
+
+```http
+POST /api/v1/auth/login
+```
+
+Example request:
+
+```json
+{
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+The server verifies the credentials and creates a JWT.
+
+The JWT is stored in an HttpOnly `tokenName` cookie.
+
+You don't need to manually create an API key.
+
+## 3. Use Protected Endpoints
+
+After logging in, authenticated requests use the `tokenName` cookie.
+
+For example:
+
+```http
+GET /api/v1/tasks/my-tasks
+```
+
+The backend reads and verifies the JWT before allowing the request to continue.
+
+```text
+Request
+   ↓
+tokenName cookie
+   ↓
+JWT verification
+   ↓
+Authenticated user
+   ↓
+Controller
+   ↓
+Response
+```
+
+## 4. Create a Task
+
+Once authenticated, you can create a task:
+
+```http
+POST /api/v1/tasks/create
+```
+
+Example request:
+
+```json
+{
+  "title": "Finish API documentation",
+  "description": "Complete the TaskSocial API documentation"
+}
+```
+
+The task is associated with the authenticated user.
+
+## 5. Manage Your Tasks
+
+You can then use the task endpoints to:
+
+- Get your tasks
+- View the shared task feed
+- Update a task
+- Delete a task
+
+See the **API Reference** for the complete list of endpoints, request schemas, responses, and examples.
+
+## 6. Log Out
+
+When you're finished, use:
+
+```http
+POST /api/v1/auth/logout
+```
+
+The server clears the authentication cookie.
+
+## What's Next?
+
+Now that you understand the basic API flow, continue with:
+
+- **Authentication** — understand how JWT authentication and HttpOnly cookies work.
+- **Creating Your First Task** — create and manage a task step by step.
+- **API Testing** — test the API using Postman.

@@ -1,0 +1,174 @@
+---
+title: "Authentication"
+description: "Understand authentication and protected requests in the TaskSocial API"
+---
+
+# Authentication
+
+TaskSocial uses JWT-based authentication with an HttpOnly cookie.
+
+The authentication flow is:
+
+```text
+Register
+   ↓
+Login
+   ↓
+Credentials verified
+   ↓
+JWT created
+   ↓
+JWT stored in HttpOnly tokenName cookie
+   ↓
+Protected request
+   ↓
+JWT verified
+   ↓
+Request continues
+```
+
+## Register a user
+
+Create an account using:
+
+```http
+POST /api/v1/auth/register
+```
+
+Example request:
+
+```json
+{
+  "username": "shahzeb",
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+The server validates the registration data and stores the new user in MongoDB.
+
+Passwords are hashed with bcrypt before they are stored.
+
+## Log in
+
+After registering, log in using:
+
+```http
+POST /api/v1/auth/login
+```
+
+Example request:
+
+```json
+{
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+The server:
+
+1. Finds the user by email.
+2. Compares the submitted password with the stored bcrypt hash.
+3. Creates a JWT after successful verification.
+4. Stores the JWT in an HttpOnly `tokenName` cookie.
+
+You do not need to generate an API key manually.
+
+## The authentication cookie
+
+After a successful login, the server sends the JWT through the `tokenName` cookie.
+
+The cookie is marked as HttpOnly, which means client-side JavaScript cannot directly read the authentication token.
+
+The browser can still send the cookie with requests to the API.
+
+The basic flow is:
+
+```text
+Login
+   ↓
+Server creates JWT
+   ↓
+Set-Cookie: tokenName=<JWT>
+   ↓
+Browser stores cookie
+   ↓
+Browser sends cookie with authenticated requests
+```
+
+## Making a protected request
+
+Once logged in, you can access protected endpoints.
+
+For example:
+
+```http
+GET /api/v1/tasks/my-tasks
+```
+
+The authentication middleware reads the `tokenName` cookie and verifies the JWT.
+
+```text
+Request
+   ↓
+Read tokenName cookie
+   ↓
+Verify JWT
+   ↓
+Identify authenticated user
+   ↓
+Continue to controller
+```
+
+If authentication succeeds, the request continues to the relevant controller.
+
+If the JWT is missing or invalid, the protected request is rejected.
+
+## Authentication and task ownership
+
+Authentication identifies the user making the request.
+
+Task ownership adds another authorization check.
+
+When a user tries to update or delete a task, the backend checks whether that task belongs to the authenticated user.
+
+This prevents one user from modifying another user's tasks.
+
+The flow is:
+
+```text
+Authenticated request
+        ↓
+Verify JWT
+        ↓
+Identify user
+        ↓
+Find requested task
+        ↓
+Check task ownership
+        ↓
+Allow update/delete
+```
+
+## Log out
+
+To log out, use:
+
+```http
+POST /api/v1/auth/logout
+```
+
+The server clears the authentication cookie.
+
+After logging out, protected endpoints can no longer be accessed using the cleared cookie.
+
+## Authentication endpoints
+
+| Method | Endpoint | Authentication |
+| --- | --- | --- |
+| `POST` | `/api/v1/auth/register` | Not required |
+| `POST` | `/api/v1/auth/login` | Not required |
+| `POST` | `/api/v1/auth/logout` | Not required |
+
+For request schemas, responses, and interactive examples, see the [API Reference](/api-reference).

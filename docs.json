@@ -1,0 +1,41 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "TaskSocial",
+  "colors": {
+    "primary": "#2563EB",
+    "light": "#3B82F6",
+    "dark": "#1D4ED8"
+  },
+  "api": {
+    "baseUrl": "https://tasksocial-production.up.railway.app",
+    "playground": {
+      "display": "interactive",
+      "proxy": false,
+      "credentials": true
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "index"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/getting-started",
+          "guides/authentication",
+          "guides/creating-your-first-task",
+          "guides/api-testing"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "openapi": "openapi-bundled.yaml"
+      }
+    ]
+  }
+}

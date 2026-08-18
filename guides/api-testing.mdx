@@ -1,0 +1,205 @@
+---
+title: "API Testing"
+description: "Test the TaskSocial API using Postman"
+---
+
+# API Testing
+
+You can test the TaskSocial API using Postman.
+
+Postman lets you send requests to the API and inspect the responses without needing to build a frontend first.
+
+This is useful when developing and debugging the backend.
+
+## Before you start
+
+Make sure the TaskSocial backend is running locally.
+
+The API is available at:
+
+```text
+http://localhost:4000
+```
+
+The API endpoints use the `/api/v1` path.
+
+## 1. Register a user
+
+Start by creating a user account.
+
+Send a `POST` request to:
+
+```http
+POST /api/v1/auth/register
+```
+
+Set the request body to JSON:
+
+```json
+{
+  "username": "shahzeb",
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+Send the request and check the response.
+
+A successful request creates the user account.
+
+## 2. Log in
+
+Next, send a `POST` request to:
+
+```http
+POST /api/v1/auth/login
+```
+
+Use the same credentials:
+
+```json
+{
+  "email": "shahzeb@example.com",
+  "password": "password123"
+}
+```
+
+After a successful login, the server creates a JWT and sends it through the `tokenName` HttpOnly cookie.
+
+You do not need to copy the JWT and manually add it as an API key.
+
+## 3. Check the authentication cookie
+
+Postman can store cookies received from the server.
+
+After logging in, check the cookies for your local TaskSocial API and look for:
+
+```text
+tokenName
+```
+
+The cookie contains the JWT created by the server.
+
+The exact cookie visibility depends on how Postman handles the response and cookie jar.
+
+## 4. Test a protected endpoint
+
+After logging in, test:
+
+```http
+GET /api/v1/tasks/my-tasks
+```
+
+The authentication cookie should be sent with the request.
+
+If the cookie contains a valid JWT, the backend verifies it and returns the authenticated user's tasks.
+
+## 5. Create a task
+
+With the authenticated session, send:
+
+```http
+POST /api/v1/tasks/create
+```
+
+Use a JSON request body:
+
+```json
+{
+  "title": "Test my API",
+  "description": "Create a task using Postman"
+}
+```
+
+A successful response confirms that authentication, routing, controller logic, and database operations are working together.
+
+## 6. Test the task endpoints
+
+You can continue testing the other task operations:
+
+```text
+GET    /api/v1/tasks/my-tasks
+GET    /api/v1/tasks/feed
+PUT    /api/v1/tasks/:id
+DELETE /api/v1/tasks/:id
+```
+
+For update and delete requests, replace `:id` with the ID of an existing task.
+
+The backend also checks task ownership before allowing a user to modify or delete a task.
+
+## 7. Test logout
+
+Finally, send:
+
+```http
+POST /api/v1/auth/logout
+```
+
+The server clears the authentication cookie.
+
+After logging out, try accessing a protected endpoint again:
+
+```http
+GET /api/v1/tasks/my-tasks
+```
+
+The request should no longer be authenticated.
+
+## What to check while testing
+
+When testing an endpoint in Postman, check:
+
+- HTTP status code
+- Response body
+- Response headers
+- Authentication cookie
+- Validation errors
+- Authentication errors
+- Task ownership behavior
+
+Testing each part separately makes it easier to identify where a problem occurs.
+
+For example:
+
+```text
+Request
+   ↓
+Route
+   ↓
+Authentication middleware
+   ↓
+Controller
+   ↓
+Mongoose
+   ↓
+MongoDB
+   ↓
+Response
+```
+
+## Common testing flow
+
+A simple testing sequence for TaskSocial is:
+
+```text
+Register
+   ↓
+Login
+   ↓
+Create task
+   ↓
+Get my tasks
+   ↓
+Update task
+   ↓
+Delete task
+   ↓
+Logout
+```
+
+This gives you a complete path through the main authentication and task functionality.
+
+## API Reference
+
+For all available endpoints, request schemas, response examples, and interactive requests, see the [API Reference](/api-reference).
