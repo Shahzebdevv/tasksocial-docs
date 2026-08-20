@@ -1,3 +1,125 @@
+---
+title: Agent-Oriented Task Update
+description: Operational guidance for AI systems that need to understand when and how to update a TaskSocial task.
+---
+
+# Agent-Oriented Task Update
+
+This guide provides operational instructions for an AI system or agent that needs to understand how to update a TaskSocial task.
+
+The API reference describes the technical contract of an operation, including the endpoint, HTTP method, parameters, request body, and response codes.
+
+This guide adds another layer of context. It explains:
+
+- When the operation should be used
+- When it should not be used
+- What conditions should be checked first
+- What information is required
+- What side effects the operation has
+- How an AI system should handle ambiguity
+- How an AI system should respond to common errors
+
+## Operation
+
+**Tool concept:** `update_task`
+
+**Underlying API endpoint:**
+
+`PUT /api/v1/tasks/{id}`
+
+## Purpose
+
+Use this operation to update an existing TaskSocial task.
+
+A task may have its:
+
+- Title updated
+- Description updated
+- Status changed
+
+The technical API allows an authenticated task owner to modify their existing task.
+
+## When to use this operation
+
+Use the update operation when all of the following conditions are true:
+
+- The authenticated user explicitly wants to modify an existing task.
+- The target task can be identified.
+- The task ID is available.
+- The authenticated user owns the task.
+- At least one valid field needs to be updated.
+
+For example:
+
+> Change my task title to "Finish the TaskSocial documentation."
+
+Or:
+
+> Mark my documentation task as completed.
+
+In these cases, the user's intention is to modify an existing task.
+
+## When not to use this operation
+
+Do not use the update operation when:
+
+- The user is only asking for information about a task.
+- The user wants to create a new task.
+- The user wants to delete a task.
+- The target task is unclear.
+- Multiple tasks could match the user's request.
+- The requested change is unclear or ambiguous.
+- The authenticated user does not own the task.
+
+For example:
+
+> Update my task.
+
+This request does not clearly identify the task or explain what should be changed.
+
+The agent should ask for clarification instead of making an arbitrary update.
+
+## Preconditions
+
+Before updating a task, the following conditions should be checked:
+
+1. The user is authenticated.
+2. The target task can be identified.
+3. The task ID is available.
+4. The authenticated user owns the task.
+5. At least one valid field is provided for the update.
+
+If these conditions are not satisfied, the agent should not blindly perform the operation.
+
+## Required input
+
+The operation requires the following path parameter:
+
+| Input | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | string | Yes | MongoDB ObjectId of the task to update |
+
+## Optional input
+
+The request body may contain one or more of the following fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `title` | string | New title for the task |
+| `description` | string | New description for the task |
+| `status` | string | Task status: `pending` or `completed` |
+
+At least one valid field should be provided when performing an update.
+
+## Example request
+
+```json
+{
+  "title": "Finish TaskSocial documentation",
+  "status": "completed"
+}
+``` 
+
 ## Expected result
 
 If the update is successful, the API returns a `200 OK` response.
