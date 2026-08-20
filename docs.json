@@ -33,6 +33,12 @@
         ]
       },
       {
+        "group": "AI and Agent Documentation",
+        "pages": [
+          "guides/agent-oriented-task-update"
+        ]
+      },
+      {
         "group": "API Reference",
         "openapi": "openapi-bundled.yaml"
       }
