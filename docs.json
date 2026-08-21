@@ -35,7 +35,8 @@
       {
         "group": "AI and Agent Documentation",
         "pages": [
-          "guides/agent-oriented-task-update"
+          "guides/agent-oriented-task-update",
+          "guides/grounding-and-api-validation"
         ]
       },
       {

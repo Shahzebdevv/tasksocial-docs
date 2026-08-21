@@ -1,0 +1,299 @@
+---
+title: Grounding and API Validation
+description: Guidance for AI systems that need to validate API operations against the documented TaskSocial API contract.
+---
+
+# Grounding and API Validation
+
+This guide explores how an AI system can reduce incorrect or unsupported API actions by grounding decisions in the documented TaskSocial API contract.
+
+This experiment was motivated by a limitation discovered during earlier testing.
+
+An AI assistant correctly determined that an ambiguous task update request required clarification. However, while explaining the possible workflow, it generated an endpoint that was not part of the documented TaskSocial API:
+
+```text
+GET /api/v1/tasks
+```
+
+The documented endpoint for retrieving the authenticated user's tasks is:
+
+```text
+GET /api/v1/tasks/my-tasks
+```
+
+This demonstrates an important limitation.
+
+An AI system may retrieve the correct general guidance while still generating an incorrect technical detail.
+
+## The grounding problem
+
+A useful answer is not always a fully grounded answer.
+
+An AI response can contain:
+
+- Correct operational reasoning
+- Correct business rules
+- Incorrect endpoint paths
+- Unsupported parameters
+- Incorrect assumptions about available operations
+
+For API interactions, these technical details matter.
+
+Calling:
+
+```text
+GET /api/v1/tasks
+```
+
+is different from calling:
+
+```text
+GET /api/v1/tasks/my-tasks
+```
+
+An AI system should therefore avoid inventing or assuming API operations.
+
+## Principle: Use the documented API contract
+
+Before recommending or calling an API operation, the system should validate that the operation exists in the documented API contract.
+
+For TaskSocial, the documented task operations include:
+
+| Purpose | Documented operation |
+| --- | --- |
+| Create a task | `POST /api/v1/tasks/create` |
+| Retrieve the authenticated user's tasks | `GET /api/v1/tasks/my-tasks` |
+| Retrieve the shared task feed | `GET /api/v1/tasks/feed` |
+| Update a task | `PUT /api/v1/tasks/{id}` |
+| Delete a task | `DELETE /api/v1/tasks/{id}` |
+
+The AI should not replace these documented operations with guessed alternatives.
+
+For example:
+
+**Incorrect assumption**
+
+```text
+GET /api/v1/tasks
+```
+
+The documented operation is:
+
+```text
+GET /api/v1/tasks/my-tasks
+```
+
+## Recommended validation process
+
+Before an AI system recommends or calls an API operation, it can follow this process:
+
+```text
+User request
+    ↓
+Identify the intended action
+    ↓
+Search the documented API contract
+    ↓
+Does a matching operation exist?
+    ↓
+No ──────→ Do not invent an endpoint
+    │
+   Yes
+    ↓
+Validate the HTTP method
+    ↓
+Validate the endpoint path
+    ↓
+Validate required parameters
+    ↓
+Validate authentication requirements
+    ↓
+Check operational preconditions
+    ↓
+Recommend or call the documented operation
+```
+
+This process separates two different problems:
+
+1. **Should the operation be performed?**
+2. **What is the exact documented operation?**
+
+Both questions need to be answered.
+
+## Example: Ambiguous task update
+
+Consider the request:
+
+> Update my documentation task.
+
+The agent-oriented documentation indicates that the request is ambiguous.
+
+The agent should first determine:
+
+- Which task the user means
+- What should be changed
+
+The agent should not immediately call the update operation.
+
+If the system needs to retrieve the user's tasks to help identify the correct task, it should use the documented operation:
+
+```text
+GET /api/v1/tasks/my-tasks
+```
+
+It should not generate an assumed endpoint such as:
+
+```text
+GET /api/v1/tasks
+```
+
+The API contract should be treated as the authoritative source for technical operation details.
+
+## Decision-making and validation
+
+Agent-oriented documentation and API validation solve different problems.
+
+### Agent-oriented guidance
+
+Agent-oriented documentation helps answer:
+
+> Should this operation be performed?
+
+For example:
+
+- Is the request clear?
+- Does the user own the task?
+- Are the requested changes known?
+
+### API validation
+
+The API contract helps answer:
+
+> What exact operation should be used?
+
+For example:
+
+- Which endpoint exists?
+- Which HTTP method should be used?
+- What parameters are required?
+- Does the operation require authentication?
+
+A more complete workflow combines both:
+
+```text
+User request
+    ↓
+Operational reasoning
+    ↓
+Should an action be performed?
+    ↓
+API contract validation
+    ↓
+Does the documented operation exist?
+    ↓
+Validate method and path
+    ↓
+Validate parameters
+    ↓
+Perform or recommend the operation
+```
+
+## When the API operation is not documented
+
+If the AI system cannot find a documented operation that matches the user's request, it should not invent one.
+
+Instead, it should:
+
+1. State that the operation could not be confirmed in the documentation.
+2. Ask for clarification if necessary.
+3. Avoid presenting an assumed endpoint as a documented API operation.
+
+For example:
+
+> I could not find a documented TaskSocial endpoint for that operation.
+
+This is preferable to generating an endpoint based on naming conventions or assumptions.
+
+## Recommended rule
+
+When providing API instructions, the AI should distinguish between:
+
+### Documented information
+
+Information explicitly supported by the API documentation.
+
+For example:
+
+```text
+GET /api/v1/tasks/my-tasks
+```
+
+### Inference or recommendation
+
+A possible workflow or suggestion based on the documentation.
+
+For example:
+
+> You may need to retrieve the user's tasks before identifying which task should be updated.
+
+The workflow recommendation should not be confused with the exact API contract.
+
+## Experiment
+
+The purpose of this experiment is to test whether explicitly documenting grounding and validation principles affects the answers provided by the documentation AI assistant.
+
+We will ask questions such as:
+
+- What endpoint should an AI use to retrieve a user's tasks?
+- Can an AI assume that `GET /api/v1/tasks` exists?
+- What should an AI do if it cannot find a documented endpoint?
+- Before recommending an API operation, what should an AI validate?
+- What is the difference between operational reasoning and API validation?
+
+The goal is not to prove that the AI can never generate an incorrect API detail.
+
+Instead, the experiment tests whether explicit documentation about grounding can encourage answers that prioritize the documented API contract.
+
+## Key idea
+
+Agent-oriented documentation helps an AI system decide:
+
+> Should I perform this action?
+
+Grounding and API validation help the system determine:
+
+> What exact documented operation should I use?
+
+Together:
+
+```text
+Operational reasoning
+    +
+API contract validation
+    ↓
+More reliable API guidance
+```
+
+This does not guarantee that an AI system will never hallucinate or generate incorrect information.
+
+However, it demonstrates an important principle:
+
+> AI systems should not treat plausible API naming patterns as authoritative API operations.
+
+The documented API contract should remain the source of truth.
+
+<Card
+  title="View the Task API Reference"
+  icon="code"
+  href="/api-reference/tasks/get-my-tasks"
+>
+  View the documented endpoint for retrieving the authenticated user's tasks.
+</Card>
+
+<Card
+  title="View Agent-Oriented Task Update"
+  icon="sparkles"
+  href="/guides/agent-oriented-task-update"
+>
+  View the operational guidance for deciding whether a task update should be performed.
+</Card>
