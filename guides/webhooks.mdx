@@ -1,0 +1,172 @@
+---
+title: "Webhooks"
+description: "Understand TaskSocial webhook events, delivery behavior, signatures, retries, and duplicate handling."
+---
+
+# Webhooks
+
+TaskSocial's webhook experiment sends task events to a configured receiver. A receiver should verify each request, respond promptly, and tolerate retries. This guide describes the behavior implemented in the current experimental sender and receiver. It does not guarantee exactly-once delivery or universal event ordering.
+
+## Events
+
+The sender currently creates these event types:
+
+- `task.created`
+- `task.updated`
+
+A webhook request uses this envelope:
+
+```json
+{
+  "id": "evt_123e4567-e89b-12d3-a456-426614174000",
+  "type": "task.updated",
+  "data": {
+    "taskId": "665f1b2c3d4e5f6789012345",
+    "title": "Prepare release notes",
+    "description": "Summarize the changes",
+    "status": "completed",
+    "author": "665f1b2c3d4e5f6789012346",
+    "version": 2
+  }
+}
+```
+
+The `id` uniquely identifies the event and should be used for duplicate detection. The `type` identifies the event kind, while `data` contains the task payload. In the current implementation, the task's `version` increases when the task is updated. The IDs above are illustrative values.
+
+## Receive a webhook
+
+Configure an endpoint that accepts `POST` requests with JSON bodies. Return a successful `2xx` response after the receiver has accepted the event. The sender treats any `2xx` response as a successful delivery.
+
+The current local experiment uses:
+
+```text
+http://localhost:5000/webhooks
+```
+
+This URL is for local development, not a publicly accessible production endpoint. For a real deployment, use an HTTPS endpoint reachable by the sender and configure the shared secret securely on both sides.
+
+A receiver should acknowledge events promptly. If processing takes longer, consider persisting the event and processing it asynchronously after returning a successful response.
+
+## Verify the signature
+
+The sender signs the timestamp and exact serialized request body using HMAC-SHA256. It sends these headers:
+
+- `X-Webhook-Timestamp`: Unix timestamp in seconds.
+- `X-Webhook-Signature`: `sha256=<hex digest>`.
+- `Content-Type`: `application/json`.
+
+The signed message consists of the timestamp, a period, and the exact request body bytes:
+
+```text
+<timestamp>.<raw request body>
+```
+
+Verify the signature before processing the event. Do not parse and re-serialize the JSON before verification because changes to whitespace or key order can change the signed bytes. Use a timing-safe comparison when comparing the calculated signature with the supplied signature.
+
+The receiver in this experiment rejects timestamps more than five minutes from the current time and returns `401` for invalid signatures or expired timestamps.
+
+### Example verification function in Node.js
+
+This example shows the signature verification logic, not a complete HTTP route:
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyWebhook(rawBody, timestamp, signature, secret) {
+  if (!Buffer.isBuffer(rawBody)) return false;
+  if (typeof secret !== "string" || secret.length === 0) {
+    return false;
+  }
+
+  if (typeof timestamp !== "string" || !/^\d+$/.test(timestamp)) {
+    return false;
+  }
+
+  if (typeof signature !== "string" ||
+      !signature.startsWith("sha256=")) {
+    return false;
+  }
+
+  const timestampSeconds = Number(timestamp);
+
+  if (!Number.isSafeInteger(timestampSeconds)) return false;
+
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > 300) {
+    return false;
+  }
+
+  const suppliedHex = signature.slice("sha256=".length);
+
+  if (!/^[a-fA-F0-9]{64}$/.test(suppliedHex)) {
+    return false;
+  }
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.`)
+    .update(rawBody)
+    .digest();
+
+  const supplied = Buffer.from(suppliedHex, "hex");
+
+  return supplied.length === expected.length &&
+    timingSafeEqual(supplied, expected);
+}
+```
+
+Use the same shared secret as the sender and keep it out of source control. The receiver must capture the raw request body before JSON parsing, for example with an Express raw-body parser configured for `application/json`.
+
+Timestamp validation limits how long a signed request remains acceptable, but it does not replace duplicate detection or prevent every possible replay.
+
+## Retries and timeouts
+
+The current worker behavior is:
+
+- Each outbound request has a five-second timeout.
+- The sender makes up to four attempts in total.
+- The configured retry delays are 5, 15, and 30 seconds after failed attempts.
+- The worker polls for due deliveries every five seconds, so actual retry timing may be later than the configured delay.
+- A final unsuccessful delivery is marked `failed`.
+- A successful `2xx` response is marked `delivered`.
+
+A timeout does not prove that the receiver did no work. The receiver may have processed the event, but its response might not have reached the sender. Consequently, the sender may deliver the same event more than once.
+
+The receiver should therefore handle retries safely rather than assuming every request represents a new event.
+
+## Handle duplicate events
+
+Persist processed event IDs and make event handling idempotent. In this experiment, the receiver stores event IDs in MongoDB and returns HTTP `200` with `duplicate: true` when it receives an event ID that has already been recorded.
+
+Do not rely only on in-memory state because it disappears when the receiver restarts. The current experiment uses a unique database index for event IDs, but checking whether an event was processed and recording its result are separate operations.
+
+Concurrent duplicate requests and failures between state changes can still expose race conditions. This implementation should not be treated as an atomic, exactly-once processing system.
+
+## Handle stale or out-of-order updates
+
+Network delays and retries can cause events to arrive in a different order from the order in which tasks changed.
+
+A receiver can compare the incoming task `version` with the version already stored and ignore an event whose version is not newer. This helps prevent an older task state from replacing a newer one.
+
+The experiment demonstrated this approach with a version-ordering test. It does not establish a universal ordering guarantee for every concurrent request or failure scenario. Consumers should design their event handling to tolerate duplicate and out-of-order delivery.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| `401` from the receiver | Shared secret, signature format, exact raw body, and timestamp window. |
+| Sender records `fetch failed` | Receiver availability, URL, network access, and whether the server is listening on the expected port. |
+| Delivery times out | The receiver may be too slow to respond. Acknowledge promptly and process heavier work asynchronously where appropriate. |
+| Same event arrives again | This can happen after a timeout or failed response. Deduplicate using the event `id`. |
+| Older task state appears | Compare task versions and reject stale updates. |
+| Delivery reaches `failed` | Inspect the attempt count, last error, and last response status in the delivery record. |
+
+## Current limitations
+
+This is an experimental implementation. Keep these limitations in mind when integrating with it:
+
+- Task persistence, event creation, and delivery creation are separate database operations. A task can be saved even if queuing its webhook fails, and an event can be created without its delivery record if the subsequent write fails.
+- Receiver task-state updates and processed-event records are also separate operations, so they do not form one atomic transaction.
+- The worker's processing timeout helps recover deliveries left in `processing`, but multiple backend instances do not currently use an atomic claim to guarantee that only one worker handles a delivery.
+- The receiver URL is hardcoded to a local address in the current experiment.
+- Delivery retries and version checks reduce common failure modes; they do not provide exactly-once delivery or a blanket guarantee of event ordering.
+
+Use the current implementation as the source of truth, and revisit this page when the implementation or delivery contract changes.

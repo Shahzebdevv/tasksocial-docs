@@ -29,7 +29,8 @@
           "guides/getting-started",
           "guides/authentication",
           "guides/creating-your-first-task",
-          "guides/api-testing"
+          "guides/api-testing",
+          "guides/webhooks"
         ]
       },
       {
