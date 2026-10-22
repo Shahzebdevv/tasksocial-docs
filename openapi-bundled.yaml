@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: REST API for TaskSocial, a social accountability application.
 servers:
-  - url: https://tasksocial-production.up.railway.app
+  - url: https://tasksocial-p2cw.onrender.com
     description: TaskSocial production API
 tags:
   - name: Authentication
