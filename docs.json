@@ -8,7 +8,7 @@
     "dark": "#1D4ED8"
   },
   "api": {
-    "baseUrl": "https://tasksocial-p2cw.onrender.com/",
+    "baseUrl": "https://tasksocial-p2cw.onrender.com",
     "playground": {
       "display": "interactive",
       "proxy": false,
